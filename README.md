@@ -5,7 +5,7 @@ For postgresSql bulk data ingestion, this builds on https://github.com/PostgreSQ
 To run the acceptance tests please complete the connection string at the top of the file.
 
 Usage is as follows, see below
-```
+```C#
 public ulong Save(IEnumerable<TestDataObject> entities)
 {
   using var connection = new NpgsqlConnection(DbConnectionString);
