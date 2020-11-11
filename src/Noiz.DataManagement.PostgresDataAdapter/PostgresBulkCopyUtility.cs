@@ -116,8 +116,8 @@ namespace Noiz.DataManagement.PostgresDataAdapter
 
 			var dataType = columnInfo.DataType switch
 			{
-				PostgresDataType.Serial => "serial PRIMARY KEY",
-				PostgresDataType.BigSerial => "bigserial PRIMARY KEY",
+				PostgresDataType.Serial => "serial",
+				PostgresDataType.BigSerial => "bigserial ",
 				PostgresDataType.BigInt => "bigint",
 				PostgresDataType.Int => "integer",
 				PostgresDataType.DoublePrecision => "double precision",
@@ -130,11 +130,23 @@ namespace Noiz.DataManagement.PostgresDataAdapter
 				_ => throw new Exception($"The property '{propertyInfo.Name}' has no data type defined for generating the column SQL")
 			};
 
+			var constraints = (columnInfo.DataType, columnInfo.Constraint) switch
+			{
+				(PostgresDataType.BigSerial, _) => "PRIMARY KEY",
+				(PostgresDataType.Serial, _) => "PRIMARY KEY",
+				(_, PostgresConstraint.PrimaryKey) => "PRIMARY KEY",
+				(_, PostgresConstraint.Unique) => "UNIQUE",
+				(_, PostgresConstraint.None) => string.Empty,
+				_ => string.Empty,
+			};
+			
+
 			var nullable = string.Empty;
-			if (columnInfo.DataType != PostgresDataType.BigSerial && columnInfo.DataType != PostgresDataType.Serial)
+			if (columnInfo.DataType != PostgresDataType.BigSerial && columnInfo.DataType != PostgresDataType.Serial
+					&& columnInfo.Constraint != PostgresConstraint.PrimaryKey)
 				nullable = columnInfo.IsNullable ? "null" : "not null";
 
-			return $"{columnName} {dataType} {nullable}";
+			return $"{columnName} {dataType} {constraints} {nullable}";
 		}
 	}
 }

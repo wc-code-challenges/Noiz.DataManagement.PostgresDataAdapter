@@ -30,10 +30,10 @@ namespace Noiz.DataManagement.PostgresDataAdapter.Tests
 			var expected = @"Drop Table IF EXISTS table_2; VACUUM;
 
 CREATE TABLE table_2 (
-  test_data_object_id integer null,
-  test_data_object_date timestamp null,
-  test_data_object_value double precision null,
-  test_data_object_name varchar(50) null,
+  test_data_object_id integer  null,
+  test_data_object_date timestamp  null,
+  test_data_object_value double precision  null,
+  test_data_object_name varchar(50) UNIQUE null,
   test_data_object_serial serial PRIMARY KEY 
 );
 ";

@@ -5,7 +5,7 @@
     <OutputType>Library</OutputType>
     <Authors>Noiz.com.au</Authors>
     <Company>Noiz PTY LTD</Company>
-    <Description>A data adapter to work with PostgreSQLCopyHelper. It makes the process of mapping copy helpers easy</Description>
+    <Description>A data adapter to work with PostgreSQLCopyHelper. It makes the process of mapping copy helpers easy. .NET 5.0</Description>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <Version>1.0.2</Version>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>

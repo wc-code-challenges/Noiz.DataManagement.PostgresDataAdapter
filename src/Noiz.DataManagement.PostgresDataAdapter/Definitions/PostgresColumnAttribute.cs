@@ -13,10 +13,13 @@ namespace Noiz.DataManagement.PostgresDataAdapter.Definitions
 
 		public string Name { get; init; }
 
-		public PostgresColumnAttribute(PostgresDataType dataType, bool isNullable = true, int size = 250)
+		public PostgresConstraint Constraint { get; init; }
+
+		public PostgresColumnAttribute(PostgresDataType dataType, bool isNullable = true, int size = 250, PostgresConstraint constraint = PostgresConstraint.None)
 		{
 			DataType = dataType;
 			IsNullable = isNullable;
+			Constraint = constraint;
 		}
 	}
 }

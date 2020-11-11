@@ -11,7 +11,7 @@ namespace Noiz.DataManagement.PostgresDataAdapter.Tests
 	public class PostgresBulkCopyUtilityAcceptanceTests
 	{
 		private const string DbConnectionString = 
-			"Server=127.0.0.1;Port=5432;Database=betfair_greyhounds;User Id=<Please fill in details>;Password=<Please fill in details>;";
+			"Server=127.0.0.1;Port=5432;Database=<Please fill in DB Name>;User Id=<Please fill in UserId>;Password=<Please fill in Pwd>;";
 
 		private const string Tablename = "postgres_bulk_util_test";
 

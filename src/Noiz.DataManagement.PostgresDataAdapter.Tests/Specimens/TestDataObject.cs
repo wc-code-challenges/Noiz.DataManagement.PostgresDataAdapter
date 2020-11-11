@@ -14,7 +14,7 @@ namespace Noiz.DataManagement.PostgresDataAdapter.Tests.Specimens
 		[PostgresColumn(PostgresDataType.DoublePrecision)]
 		public double? TestDataObjectValue { get; set; }
 
-		[PostgresColumn(PostgresDataType.Varchar, Size = 50)]
+		[PostgresColumn(PostgresDataType.Varchar, Size = 50, Constraint = PostgresConstraint.Unique)]
 		public string TestDataObjectName { get; set; }
 
 		[PostgresColumn(PostgresDataType.Serial)]
