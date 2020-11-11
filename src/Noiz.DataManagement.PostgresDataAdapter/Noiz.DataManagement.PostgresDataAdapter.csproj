@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net5.0</TargetFramework>
+    <OutputType>Library</OutputType>
+    <Authors>Noiz.com.au</Authors>
+    <Company>Noiz PTY LTD</Company>
+    <Description>A data adapter to work with PostgreSQLCopyHelper. It makes the process of mapping copy helpers easy</Description>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Npgsql" Version="4.1.5" />
+    <PackageReference Include="PostgreSQLCopyHelper" Version="2.7.0" />
+  </ItemGroup>
+
+</Project>
