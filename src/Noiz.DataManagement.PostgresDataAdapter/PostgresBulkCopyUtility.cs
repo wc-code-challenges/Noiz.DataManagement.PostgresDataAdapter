@@ -99,7 +99,7 @@ namespace Noiz.DataManagement.PostgresDataAdapter
 					, x => (bool)propertyInfo.GetValue(x)),
 				(_, true, "boolean") => postgreSQLCopyHelper.MapBoolean(GetColumnNameFromPascalCaseOrCamelCasePropertyName(propertyInfo.Name)
 					, x => (bool?)propertyInfo.GetValue(x)),
-				_ => throw new NotImplementedException($"Error on property '{propertyInfo.Name}' The type conversion to postgres for .NET type {propertyInfo.PropertyType.FullName} is not implemented in this library."),
+				_ => throw new NotImplementedException($"Error on property '{propertyInfo.Name}' The type conversion to postgres for .NET type {propertyInfo.PropertyType.FullName} is not implemented in this library implemented types are common value types [int, long, double, decimal, char, string, datetime]."),
 			};
 		}
 

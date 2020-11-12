@@ -40,6 +40,21 @@ CREATE TABLE table_2 (
 			Assert.Equal(expected, sql);
 		}
 
+		[Fact]
+		public void CreatePostgresTable_PkConstraint_ColumnGeneratedCorrectly()
+		{
+			var sql = PostgresBulkCopyUtility.CreatePostgresTable<ProvidedPkTestObject>("table_2");
+
+			var expected = @"Drop Table IF EXISTS table_2; VACUUM;
+
+CREATE TABLE table_2 (
+  id integer PRIMARY KEY ,
+  number_of_items integer  null
+);
+";
+			Assert.Equal(expected, sql);
+		}
+
 		private void VerifyColumn(string name, string dataType, IReadOnlyList<TargetColumn> columns)
 		{
 			var column = columns.First(x => string.Equals(x.ColumnName, name));
