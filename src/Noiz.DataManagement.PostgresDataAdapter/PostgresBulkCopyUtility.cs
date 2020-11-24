@@ -11,8 +11,14 @@ namespace Noiz.DataManagement.PostgresDataAdapter
 	public static class PostgresBulkCopyUtility
 	{
 		/// <summary>
+		/// Pascal case  if true = ColumnName otherwise if false column_name.
+		/// When true then C# property names and column names match. By default is set to true
+		/// </summary>
+		public static bool UsePascalCase { get; set; } = true;
+
+		/// <summary>
 		/// This method creates a PostgreSQLCopyHelper for any type on all Properties that can be read.
-		/// It converts property names from Came or Pascal case to using lower case seperated by undersore _
+		/// It converts property names from Came or Pascal case to using lower case seperated by undersore _ if UsePascalCase is false
 		/// </summary>
 		/// <typeparam name="T">The type of entity to wrap</typeparam>
 		/// <param name="entityType">The type definition for the entity</param>
@@ -30,7 +36,8 @@ namespace Noiz.DataManagement.PostgresDataAdapter
 		}
 
 		/// <summary>
-		/// Generate DDL for a class definition
+		/// Generate DDL for a class definition 
+		/// It converts property names from Came or Pascal case to using lower case seperated by undersore _ if UsePascalCase is false
 		/// </summary>
 		/// <typeparam name="T">The type to generate table DDL statements for</typeparam>
 		/// <param name="tableName">The name to use for the table</param>
@@ -104,7 +111,7 @@ namespace Noiz.DataManagement.PostgresDataAdapter
 		}
 
 		internal static string GetColumnNameFromPascalCaseOrCamelCasePropertyName(string propertyName)
-			=> System.Text.RegularExpressions.Regex.Replace(propertyName, "(\\B[A-Z])", "_$1").ToLower();
+			=> UsePascalCase ? propertyName : System.Text.RegularExpressions.Regex.Replace(propertyName, "(\\B[A-Z])", "_$1").ToLower();
 
 		internal static string GetColumnCreateSql(PropertyInfo propertyInfo)
 		{

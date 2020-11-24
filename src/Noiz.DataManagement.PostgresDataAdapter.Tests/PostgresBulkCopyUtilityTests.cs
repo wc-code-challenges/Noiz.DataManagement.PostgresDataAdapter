@@ -8,6 +8,11 @@ namespace Noiz.DataManagement.PostgresDataAdapter.Tests
 {
 	public class PostgresBulkCopyUtilityTests
 	{
+		public PostgresBulkCopyUtilityTests()
+		{
+			PostgresBulkCopyUtility.UsePascalCase = false;
+		}
+
 		[Fact]
 		public void GetPostgreSQLCopyHelper_AllPropertyDataTypes_TypesTranslateAndNameIsMatched()
 		{
