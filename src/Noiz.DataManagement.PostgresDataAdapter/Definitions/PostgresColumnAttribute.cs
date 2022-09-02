@@ -20,6 +20,7 @@ namespace Noiz.DataManagement.PostgresDataAdapter.Definitions
 			DataType = dataType;
 			IsNullable = isNullable;
 			Constraint = constraint;
+			Size = size;
 		}
 	}
 }

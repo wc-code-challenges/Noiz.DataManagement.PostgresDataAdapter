@@ -32,7 +32,7 @@ namespace Noiz.DataManagement.PostgresDataAdapter.Tests
 		{
 			var sql = PostgresBulkCopyUtility.CreatePostgresTable<TestDataObject>("table_2");
 
-			var expected = @"Drop Table IF EXISTS table_2; VACUUM;
+			var expected = @"Drop Table IF EXISTS table_2;
 
 CREATE TABLE table_2 (
   test_data_object_id integer  null,
@@ -46,11 +46,30 @@ CREATE TABLE table_2 (
 		}
 
 		[Fact]
+		public void CreatePostgresTable_AllPropertyDataTypes_AppropriateDmlCreated_NoAttributesWithEnum()
+		{
+			var sql = PostgresBulkCopyUtility.CreatePostgresTable<TestDataObjectNoAttributes>("postgres_bulk_util_test", primaryKeyColumnNameOrConstraintSql: "test_data_object_id");
+
+			var expected = @"Drop Table IF EXISTS postgres_bulk_util_test;
+
+CREATE TABLE postgres_bulk_util_test (
+  test_data_object_id integer NOT NULL,
+  test_data_object_date timestamp NULL,
+  test_data_object_value double precision NULL,
+  test_data_object_name varchar(245) NULL,
+  change_value varchar(245) NOT NULL
+);
+ALTER TABLE postgres_bulk_util_test ADD PRIMARY KEY (test_data_object_id);
+";
+			Assert.Equal(expected, sql);
+		}
+
+		[Fact]
 		public void CreatePostgresTable_PkConstraint_ColumnGeneratedCorrectly()
 		{
 			var sql = PostgresBulkCopyUtility.CreatePostgresTable<ProvidedPkTestObject>("table_2");
 
-			var expected = @"Drop Table IF EXISTS table_2; VACUUM;
+			var expected = @"Drop Table IF EXISTS table_2;
 
 CREATE TABLE table_2 (
   id integer PRIMARY KEY ,

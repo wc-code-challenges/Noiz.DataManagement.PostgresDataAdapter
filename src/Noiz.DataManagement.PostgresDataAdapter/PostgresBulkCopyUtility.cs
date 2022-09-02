@@ -37,17 +37,17 @@ namespace Noiz.DataManagement.PostgresDataAdapter
 
 		/// <summary>
 		/// Generate DDL for a class definition 
-		/// It converts property names from Came or Pascal case to using lower case seperated by undersore _ if UsePascalCase is false
+		/// It converts property names from Camel or Pascal case to using lower case seperated by undersore _ if UsePascalCase is false
 		/// </summary>
 		/// <typeparam name="T">The type to generate table DDL statements for</typeparam>
 		/// <param name="tableName">The name to use for the table</param>
 		/// <param name="drop">whether or not to drop the table</param>
 		/// <returns>String representing the table DDL</returns>
-		public static string CreatePostgresTable<T>(string tableName, bool drop = true)
+		public static string CreatePostgresTable<T>(string tableName, bool drop = true, string primaryKeyColumnNameOrConstraintSql = null)
 		{
 			var sql = new StringBuilder();
 
-			if (drop) sql.AppendLine($"Drop Table IF EXISTS {tableName}; VACUUM;");
+			if (drop) sql.AppendLine($"Drop Table IF EXISTS {tableName};");
 
 			sql.AppendLine();
 
@@ -63,6 +63,14 @@ namespace Noiz.DataManagement.PostgresDataAdapter
 
 			sql.AppendLine(");");
 
+			if (!string.IsNullOrWhiteSpace(primaryKeyColumnNameOrConstraintSql))
+			{
+				if (primaryKeyColumnNameOrConstraintSql.StartsWith("Alter Table", StringComparison.OrdinalIgnoreCase))
+					sql.AppendLine(primaryKeyColumnNameOrConstraintSql);
+				else
+					sql.AppendLine($"ALTER TABLE {tableName} ADD PRIMARY KEY ({primaryKeyColumnNameOrConstraintSql});");
+			}
+
 			return sql.ToString();
 		}
 
@@ -71,6 +79,11 @@ namespace Noiz.DataManagement.PostgresDataAdapter
 			var dataType = propertyInfo.GetCustomAttribute<PostgresColumnAttribute>()?.DataType;
 			if (dataType == PostgresDataType.BigSerial || dataType == PostgresDataType.Serial)//serial is not inserted
 				return postgreSQLCopyHelper;
+
+			if (propertyInfo.PropertyType.IsEnum)
+			{
+				return postgreSQLCopyHelper.MapVarchar(GetColumnNameFromPascalCaseOrCamelCasePropertyName(propertyInfo.Name), x => propertyInfo.GetValue(x)?.ToString());
+			}
 
 			return (propertyInfo.PropertyType.Name.ToLower()
 				, propertyInfo.PropertyType.IsGenericType
@@ -81,7 +94,7 @@ namespace Noiz.DataManagement.PostgresDataAdapter
 				("char", false, _) => postgreSQLCopyHelper.MapCharacter(GetColumnNameFromPascalCaseOrCamelCasePropertyName(propertyInfo.Name)
 					, x => propertyInfo.GetValue(x).ToString()),
 				(_, true, "char") => postgreSQLCopyHelper.MapCharacter(GetColumnNameFromPascalCaseOrCamelCasePropertyName(propertyInfo.Name)
-					, x => propertyInfo.GetValue(x).ToString()),
+					, x => propertyInfo.GetValue(x)?.ToString()),
 				("datetime", _, _) => postgreSQLCopyHelper.MapTimeStamp(GetColumnNameFromPascalCaseOrCamelCasePropertyName(propertyInfo.Name)
 					, x =>  (DateTime)propertyInfo.GetValue(x)),
 				(_, true, "datetime") => postgreSQLCopyHelper.MapTimeStamp(GetColumnNameFromPascalCaseOrCamelCasePropertyName(propertyInfo.Name)
@@ -116,10 +129,15 @@ namespace Noiz.DataManagement.PostgresDataAdapter
 		internal static string GetColumnCreateSql(PropertyInfo propertyInfo)
 		{
 			var columnInfo = propertyInfo.GetCustomAttributes(typeof(PostgresColumnAttribute)).Cast<PostgresColumnAttribute>().FirstOrDefault();
-			if (columnInfo == null) 
-				throw new Exception($"The property '{propertyInfo.Name}' has no data type defined for generating the column SQL");
+			if (columnInfo == null)
+				return GenerateColumnSqlFromPropertyInfo(propertyInfo);
 
-			var columnName = columnInfo?.Name?? GetColumnNameFromPascalCaseOrCamelCasePropertyName(propertyInfo.Name);
+			return GenerateColumnSqlFromAttribute(columnInfo, propertyInfo);
+		}
+
+		private static string GenerateColumnSqlFromAttribute(PostgresColumnAttribute columnInfo, PropertyInfo propertyInfo)
+		{
+			var columnName = columnInfo?.Name ?? GetColumnNameFromPascalCaseOrCamelCasePropertyName(propertyInfo.Name);
 
 			var dataType = columnInfo.DataType switch
 			{
@@ -133,6 +151,7 @@ namespace Noiz.DataManagement.PostgresDataAdapter
 				PostgresDataType.Timestamp => "timestamp",
 				PostgresDataType.Varchar => $"varchar({columnInfo.Size})",
 				PostgresDataType.Boolean => "boolean",
+				PostgresDataType.Uuid => "Uuid",
 
 				_ => throw new Exception($"The property '{propertyInfo.Name}' has no data type defined for generating the column SQL")
 			};
@@ -146,7 +165,7 @@ namespace Noiz.DataManagement.PostgresDataAdapter
 				(_, PostgresConstraint.None) => string.Empty,
 				_ => string.Empty,
 			};
-			
+
 
 			var nullable = string.Empty;
 			if (columnInfo.DataType != PostgresDataType.BigSerial && columnInfo.DataType != PostgresDataType.Serial
@@ -154,6 +173,37 @@ namespace Noiz.DataManagement.PostgresDataAdapter
 				nullable = columnInfo.IsNullable ? "null" : "not null";
 
 			return $"{columnName} {dataType} {constraints} {nullable}";
+		}
+
+		private static string GenerateColumnSqlFromPropertyInfo(PropertyInfo propertyInfo, int defaultSize = 245)
+		{
+			string nullStatus_null = "NULL",  nullStatus_not_null = "NOT NULL";
+			return (propertyInfo.PropertyType.Name.ToLower()
+				, propertyInfo.PropertyType.IsGenericType
+				, propertyInfo.PropertyType.GenericTypeArguments.FirstOrDefault()?.Name?.ToLower() ?? propertyInfo.PropertyType.Name.ToLower()
+				, propertyInfo.PropertyType.IsEnum) switch
+			{
+				(_, true, _, true) => $"{GetColumnNameFromPascalCaseOrCamelCasePropertyName(propertyInfo.Name)} varchar({defaultSize}) {nullStatus_null}",
+				(_, false, _, true) => $"{GetColumnNameFromPascalCaseOrCamelCasePropertyName(propertyInfo.Name)} varchar({defaultSize}) {nullStatus_not_null}",
+				("string", _, _, _) => $"{GetColumnNameFromPascalCaseOrCamelCasePropertyName(propertyInfo.Name)} varchar({defaultSize}) {nullStatus_null}",
+				("char", false, _, _) => $"{GetColumnNameFromPascalCaseOrCamelCasePropertyName(propertyInfo.Name)} varchar({1}) {nullStatus_not_null}",
+				(_, true, "char", _) => $"{GetColumnNameFromPascalCaseOrCamelCasePropertyName(propertyInfo.Name)} varchar({1}) {nullStatus_null}",
+				("datetime", false, _, _) => $"{GetColumnNameFromPascalCaseOrCamelCasePropertyName(propertyInfo.Name)} timestamp {nullStatus_not_null}",
+				(_, true, "datetime", _) => $"{GetColumnNameFromPascalCaseOrCamelCasePropertyName(propertyInfo.Name)} timestamp {nullStatus_null}",
+				("double", false, _, _) => $"{GetColumnNameFromPascalCaseOrCamelCasePropertyName(propertyInfo.Name)} double precision {nullStatus_not_null}",
+				(_, true, "double", _) => $"{GetColumnNameFromPascalCaseOrCamelCasePropertyName(propertyInfo.Name)} double precision {nullStatus_null}",
+				(_, true, "int32", _) => $"{GetColumnNameFromPascalCaseOrCamelCasePropertyName(propertyInfo.Name)} integer {nullStatus_null}",
+				("int32", false, _, _) => $"{GetColumnNameFromPascalCaseOrCamelCasePropertyName(propertyInfo.Name)} integer {nullStatus_not_null}",
+				("int64", false, _, _) => $"{GetColumnNameFromPascalCaseOrCamelCasePropertyName(propertyInfo.Name)} bigint {nullStatus_not_null}",
+				(_, true, "int64", _) => $"{GetColumnNameFromPascalCaseOrCamelCasePropertyName(propertyInfo.Name)} bigint {nullStatus_null}",
+				("decimal", false, _, _) => $"{GetColumnNameFromPascalCaseOrCamelCasePropertyName(propertyInfo.Name)} numeric(18,9) {nullStatus_not_null}",
+				(_, true, "decimal", _) => $"{GetColumnNameFromPascalCaseOrCamelCasePropertyName(propertyInfo.Name)} numeric(18,9) {nullStatus_null}",
+				("boolean", false, _, _) => $"{GetColumnNameFromPascalCaseOrCamelCasePropertyName(propertyInfo.Name)} boolean {nullStatus_not_null}",
+				(_, true, "boolean", _) => $"{GetColumnNameFromPascalCaseOrCamelCasePropertyName(propertyInfo.Name)} boolean {nullStatus_null}",
+				("guid", false, _, _) => $"{GetColumnNameFromPascalCaseOrCamelCasePropertyName(propertyInfo.Name)} Uuid {nullStatus_not_null}",
+				(_, true, "guid", _) => $"{GetColumnNameFromPascalCaseOrCamelCasePropertyName(propertyInfo.Name)} Uuid {nullStatus_null}",
+				_ => throw new NotImplementedException($"Error on property '{propertyInfo.Name}' The type conversion to postgres for .NET type {propertyInfo.PropertyType.FullName} is not implemented in this library implemented types are common value types [int, long, double, decimal, char, string, datetime].")
+			};
 		}
 	}
 }

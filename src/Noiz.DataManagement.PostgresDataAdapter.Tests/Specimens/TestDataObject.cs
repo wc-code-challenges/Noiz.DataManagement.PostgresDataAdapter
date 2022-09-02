@@ -20,4 +20,24 @@ namespace Noiz.DataManagement.PostgresDataAdapter.Tests.Specimens
 		[PostgresColumn(PostgresDataType.Serial)]
 		public int TestDataObjectSerial { get; set; }
 	}
+
+	public class TestDataObjectNoAttributes
+	{
+		public int TestDataObjectId { get; set; }
+
+		public DateTime? TestDataObjectDate { get; set; }
+
+		public double? TestDataObjectValue { get; set; }
+
+		public string TestDataObjectName { get; set; }
+
+		public TestEnumeration ChangeValue { get; set; }
+	}
+
+	public enum TestEnumeration
+	{
+		test1,
+		test2,
+		test3
+	}
 }

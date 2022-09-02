@@ -11,6 +11,7 @@
 		DoublePrecision,
 		Timestamp,
 		Varchar,
-		Boolean
+		Boolean,
+		Uuid
 	}
 }

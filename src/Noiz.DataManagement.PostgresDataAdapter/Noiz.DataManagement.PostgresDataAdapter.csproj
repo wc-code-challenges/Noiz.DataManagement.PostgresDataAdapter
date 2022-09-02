@@ -7,7 +7,7 @@
     <Company>Noiz PTY LTD</Company>
     <Description>A data adapter to work with PostgreSQLCopyHelper. It makes the process of mapping copy helpers easy. .NET 5.0</Description>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <Version>1.0.4</Version>
+    <Version>1.0.5</Version>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
   </PropertyGroup>
 
