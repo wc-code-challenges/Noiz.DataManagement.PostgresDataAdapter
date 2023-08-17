@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections;
+using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using System.Reflection;
@@ -73,6 +75,41 @@ namespace Noiz.DataManagement.PostgresDataAdapter
 
 			return sql.ToString();
 		}
+
+		public static string GenerateUpsertQuery<T>(string targetTable, string tempTable, IList<string> constraintColumns)
+		{
+			List<string> updateColumnList = new();
+			var dataColumns = typeof(T).GetProperties(BindingFlags.Instance | BindingFlags.Public);
+			foreach (var propertyInfo in dataColumns)
+			{
+                var columnInfo = propertyInfo.GetCustomAttributes(typeof(PostgresColumnAttribute)).Cast<PostgresColumnAttribute>().FirstOrDefault();
+                if (columnInfo != null)
+				{
+					if (columnInfo.Constraint == PostgresConstraint.Unique || columnInfo.Constraint == PostgresConstraint.PrimaryKey
+						|| columnInfo.DataType == PostgresDataType.BigSerial || columnInfo.DataType == PostgresDataType.Serial)
+						continue;
+
+					var columnName = columnInfo?.Name ?? GetColumnNameFromPascalCaseOrCamelCasePropertyName(propertyInfo.Name);
+					if (!constraintColumns.Contains(columnName))
+						updateColumnList.Add(columnName);
+				}
+				else
+				{
+					var columnName = GetColumnNameFromPascalCaseOrCamelCasePropertyName(propertyInfo.Name);
+                    if (!constraintColumns.Contains(columnName))
+                        updateColumnList.Add(columnName);
+                }
+            }
+            var colummnCsv = string.Join(',', updateColumnList);
+            var updateColumnSql = string.Join(',', updateColumnList.Select(x => $"{x} = EXCLUDED.{x}"));
+
+            return $@"INSERT INTO 
+							{targetTable} ({colummnCsv}) 
+							select {colummnCsv} 
+							from {tempTable}
+							on conflict ({string.Join(',', constraintColumns)}) do 
+							update set {updateColumnSql};";
+        }
 
 		internal static PostgreSQLCopyHelper<T> MapProperty<T>(this PostgreSQLCopyHelper<T> postgreSQLCopyHelper, PropertyInfo propertyInfo)
 		{
