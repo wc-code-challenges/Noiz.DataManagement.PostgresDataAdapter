@@ -16,7 +16,7 @@ namespace Noiz.DataManagement.PostgresDataAdapter.Tests
 		[Fact]
 		public void GetPostgreSQLCopyHelper_AllPropertyDataTypes_TypesTranslateAndNameIsMatched()
 		{
-			var actual = PostgresBulkCopyUtility.GetPostgreSQLCopyHelper<TestDataObject>("table_2").TargetTable;
+            var actual = PostgresBulkCopyUtility.GetPostgreSQLCopyHelper<TestDataObject>("table_2").TargetTable;
 
 			Assert.Equal("table_2", actual.GetFullyQualifiedTableName());
 

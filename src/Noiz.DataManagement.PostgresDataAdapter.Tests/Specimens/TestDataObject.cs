@@ -34,7 +34,7 @@ namespace Noiz.DataManagement.PostgresDataAdapter.Tests.Specimens
 		public TestEnumeration ChangeValue { get; set; }
 	}
 
-	public enum TestEnumeration
+    public enum TestEnumeration
 	{
 		test1,
 		test2,
