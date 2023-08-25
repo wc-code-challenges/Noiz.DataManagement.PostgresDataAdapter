@@ -46,6 +46,24 @@ CREATE TABLE table_2 (
 		}
 
 		[Fact]
+		public void GenerateUpsertQueryTest()
+		{
+			List<string> constraints = new List<string>();
+			constraints.Add("test_data_object_name");
+
+			var sql = PostgresBulkCopyUtility.GenerateUpsertQuery<TestDataObject>("original", "temp", constraints);
+
+			var expected = @"INSERT INTO 
+							original (test_data_object_id,test_data_object_date,test_data_object_value,test_data_object_name) 
+							select test_data_object_id,test_data_object_date,test_data_object_value,test_data_object_name 
+							from temp
+							on conflict (test_data_object_name) do 
+							update set test_data_object_id = EXCLUDED.test_data_object_id,test_data_object_date = EXCLUDED.test_data_object_date,test_data_object_value = EXCLUDED.test_data_object_value;";
+
+			Assert.Equal(expected, sql);
+        }
+
+		[Fact]
 		public void CreatePostgresTable_AllPropertyDataTypes_AppropriateDmlCreated_NoAttributesWithEnum()
 		{
 			var sql = PostgresBulkCopyUtility.CreatePostgresTable<TestDataObjectNoAttributes>("postgres_bulk_util_test", primaryKeyColumnNameOrConstraintSql: "test_data_object_id");

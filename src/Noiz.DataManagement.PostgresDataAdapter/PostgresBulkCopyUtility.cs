@@ -1,10 +1,14 @@
 ﻿using System;
+using System.Collections;
+using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using System.Reflection;
 using System.Text;
 using Noiz.DataManagement.PostgresDataAdapter.Definitions;
+using Npgsql;
 using PostgreSQLCopyHelper;
+using Dapper;
 
 namespace Noiz.DataManagement.PostgresDataAdapter
 {
@@ -43,7 +47,7 @@ namespace Noiz.DataManagement.PostgresDataAdapter
 		/// <param name="tableName">The name to use for the table</param>
 		/// <param name="drop">whether or not to drop the table</param>
 		/// <returns>String representing the table DDL</returns>
-		public static string CreatePostgresTable<T>(string tableName, bool drop = true, string primaryKeyColumnNameOrConstraintSql = null)
+		public static string CreatePostgresTable<T>(string tableName, bool drop = true, string primaryKeyColumnNameOrConstraintSql = null, bool isTempTable = false)
 		{
 			var sql = new StringBuilder();
 
@@ -51,7 +55,10 @@ namespace Noiz.DataManagement.PostgresDataAdapter
 
 			sql.AppendLine();
 
-			sql.AppendLine($"CREATE TABLE {tableName} (");
+			if (isTempTable)
+                sql.AppendLine($"CREATE TEMPORARY TABLE {tableName} (");
+            else
+                sql.AppendLine($"CREATE TABLE {tableName} (");
 
 			var entityType = typeof(T);
 			var properties = entityType.GetProperties(BindingFlags.Instance | BindingFlags.Public);
@@ -73,6 +80,78 @@ namespace Noiz.DataManagement.PostgresDataAdapter
 
 			return sql.ToString();
 		}
+
+		/// <summary>
+		/// Pre-condition: the target table must exist and must match the type "T" passed.
+		/// This will do a bulk insert into a temporary table named temp_[tableName].
+		/// Then perform an upsert query from the temporary table into the target table.
+		/// Finally it will drop the temporary table.
+		/// </summary>
+		/// <typeparam name="T">Data type matching the table</typeparam>
+		/// <param name="tableName">Table name</param>
+		/// <param name="values">Data to be saved</param>
+		/// <param name="connection">Valid connection to the database</param>
+		/// <param name="constraintColumns">Ordered list of the columns in the unique constraint</param>
+		/// <returns>Number of database changes</returns>
+		public static int Upsert<T>(string tableName, IEnumerable<T> values, NpgsqlConnection connection, IList<string> constraintColumns)
+		{
+            var tempTableName = $"temp_{tableName}";
+            if (connection.State != ConnectionState.Open)
+                connection.Open();
+
+            try
+			{
+				var createTempTableSql = CreatePostgresTable<T>(tempTableName, isTempTable: true);
+				connection.ExecuteScalar(createTempTableSql);
+
+				var mapping = GetPostgreSQLCopyHelper<T>(tempTableName);
+				var savedEntities = mapping.SaveAll(connection, values);
+
+				var upsertQuerySql = GenerateUpsertQuery<T>(tableName, tempTableName, constraintColumns);
+				var upsertResult = connection.Execute(upsertQuerySql);
+
+				return upsertResult;
+			}
+			finally
+			{
+                connection.ExecuteScalar($"Drop Table {tempTableName};");
+                connection.Close();
+            }
+		}
+
+		internal static string GenerateUpsertQuery<T>(string targetTable, string tempTable, IList<string> constraintColumns)
+		{
+			List<string> updateColumnList = new();
+			var dataColumns = typeof(T).GetProperties(BindingFlags.Instance | BindingFlags.Public);
+			foreach (var propertyInfo in dataColumns)
+			{
+                var columnInfo = propertyInfo.GetCustomAttributes(typeof(PostgresColumnAttribute)).Cast<PostgresColumnAttribute>().FirstOrDefault();
+                if (columnInfo != null)
+				{
+					if (columnInfo.DataType == PostgresDataType.BigSerial || columnInfo.DataType == PostgresDataType.Serial)
+						continue;
+
+					var columnName = columnInfo?.Name ?? GetColumnNameFromPascalCaseOrCamelCasePropertyName(propertyInfo.Name);
+					updateColumnList.Add(columnName);
+				}
+				else
+				{
+					var columnName = GetColumnNameFromPascalCaseOrCamelCasePropertyName(propertyInfo.Name);
+					updateColumnList.Add(columnName);
+                }
+            }
+            var colummnCsv = string.Join(',', updateColumnList);
+            var updateColumnSql = string.Join(',', updateColumnList
+				.Where(x => !constraintColumns.Contains(x))
+				.Select(x => $"{x} = EXCLUDED.{x}"));
+
+            return $@"INSERT INTO 
+							{targetTable} ({colummnCsv}) 
+							select {colummnCsv} 
+							from {tempTable}
+							on conflict ({string.Join(',', constraintColumns)}) do 
+							update set {updateColumnSql};";
+        }
 
 		internal static PostgreSQLCopyHelper<T> MapProperty<T>(this PostgreSQLCopyHelper<T> postgreSQLCopyHelper, PropertyInfo propertyInfo)
 		{
